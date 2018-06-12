@@ -37,3 +37,4 @@ pub mod state_context;
 pub mod transaction;
 pub mod transaction_receipt;
 pub mod validator;
+pub mod identity;

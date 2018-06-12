@@ -56,6 +56,11 @@
 /families/smallbank/smallbank_rust/Cargo.lock
 /families/smallbank/smallbank_rust/bin/
 /families/smallbank/smallbank_rust/src/smallbank.rs
+/families/identity/sawtooth_identity_rust/target/
+/families/identity/sawtooth_identity_rust/Cargo.lock
+/families/identity/sawtooth_identity_rust/bin/
+/families/identity/sawtooth_identity_rust/src/identities.rs
+
 
 /coverage
 /coverage/html
