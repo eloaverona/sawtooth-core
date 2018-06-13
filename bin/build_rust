@@ -63,9 +63,9 @@ cd $top_dir/sdk/examples/xo_rust
 cargo build --release && cp ./target/release/xo_rust $top_dir/sdk/examples/xo_rust/bin/xo_rust
 
 echo -e "\033[0;32m--- Building sawtooth-identity-tp-rust ---\n\033[0m"
-rm -rf $top_dir/families/identity/sawtooth_idendity_rust/bin/
-mkdir -p $top_dir/families/identity/sawtooth_idendity_rust/bin/
-cd $top_dir/families/identity/sawtooth_idendity_rust
-cargo build --release && cp ./target/release/sawtooth_idendity_rust $top_dir/families/identity/sawtooth_idendity_rust/bin/sawtooth_idendity_rust
+rm -rf $top_dir/families/identity/sawtooth_identity_rust/bin/
+mkdir -p $top_dir/families/identity/sawtooth_identity_rust/bin/
+cd $top_dir/families/identity/sawtooth_identity_rust
+cargo build --release && cp ./target/release/sawtooth_identity_rust $top_dir/families/identity/sawtooth_identity_rust/bin/sawtooth_identity_rust
 
 # echo -e "\033[0;32m--- Building noop-tp-rust ---\n\033[0m"

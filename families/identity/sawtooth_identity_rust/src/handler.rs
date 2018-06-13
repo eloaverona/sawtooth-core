@@ -16,7 +16,7 @@
  */
 
 use crypto::digest::Digest;
-use crypto::sha2::Sha512;
+use crypto::sha2::Sha256;
 use protobuf;
 
 use sawtooth_sdk::messages::processor::TpProcessRequest;
@@ -43,14 +43,55 @@ const ALLOWED_SIGNER_SETTING: &str = "sawtooth.identity.allowed_keys";
 
 // Constants to be used when constructing config namespace addresses
 const SETTING_NAMESPACE: &str = "000000";
-const _SETTING_MAX_KEY_PARTS: u32 = 4;
-const _SETTING_ADDRESS_PART_SIZE: u32 = 16;
+const _SETTING_MAX_KEY_PARTS: usize = 4;
+const _SETTING_ADDRESS_PART_SIZE: usize = 16;
 
 // Number of seconds to wait for state operations to succeed
 const STATE_TIMEOUT_SEC: u32 = 10;
 
-const ALLOWED_SIGNER_ADDRESS: &str = "TEST";//_setting_key_to_address(
-//    "sawtooth.identity.allowed_keys")
+///Computes the address for the given setting key.
+/// Keys are broken into four parts, based on the dots in the string. For
+/// example, the key `a.b.c` address is computed based on `a`, `b`, `c` and
+/// padding. A longer key, for example `a.b.c.d.e`, is still
+/// broken into four parts, but the remaining pieces are in the last part:
+/// `a`, `b`, `c` and `d.e`.
+///
+/// Each of these pieces has a short hash computed (the first
+/// _SETTING_ADDRESS_PART_SIZE characters of its SHA256 hash in hex), and is
+/// joined into a single address, with the config namespace
+/// (_SETTING_NAMESPACE) added at the beginning.
+///
+/// Args:
+///     key (str): the setting key
+/// Returns:
+///     str: the computed address
+///
+
+fn setting_key_to_address(key: &str) -> String {
+    // Split the key into _SETTING_MAX_KEY_PARTS parts, maximum, compute the
+    // short hash of each, and then pad if necessary
+
+    let key_parts: Vec<&str> = key.splitn(_SETTING_MAX_KEY_PARTS, ".").collect();
+    let mut addr_parts: Vec<_> = key_parts.iter().map(|x| setting_short_hash(x)).collect();
+    let len_addr_parts = addr_parts.len();
+    addr_parts.extend(
+        vec![get_setting_address_padding();_SETTING_MAX_KEY_PARTS - &len_addr_parts].iter().cloned());
+    SETTING_NAMESPACE.to_string() + &addr_parts.join("")
+}
+
+fn setting_short_hash(byte_str: &str) -> String {
+    let mut sha = Sha256::new();
+    sha.input(byte_str.as_bytes());
+    sha.result_str()[.._SETTING_ADDRESS_PART_SIZE].to_string()
+}
+
+fn get_setting_address_padding() -> String {
+    setting_short_hash("")
+}
+
+fn get_allowed_signer_address() -> String {
+    setting_key_to_address("sawtooth.identity.allowed_keys")
+}
 
 pub struct IdentityTransactionHandler {
     family_name: String,
