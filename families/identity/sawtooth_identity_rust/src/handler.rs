@@ -128,11 +128,11 @@ impl TransactionHandler for IdentityTransactionHandler {
         transaction: &TpProcessRequest,
         context: &mut TransactionContext,
     ) -> Result<(), ApplyError> {
-        let mut payload = unpack_payload(transaction.get_payload())?;
+        let payload = unpack_payload(transaction.get_payload())?;
 
         match payload.get_field_type() {
             IdentityPayload_IdentityType::ROLE => {
-                Ok(())
+                set_role(&payload, context)
             }
             IdentityPayload_IdentityType::POLICY => {
                 set_policy(&payload, context)
@@ -161,11 +161,11 @@ fn unpack_payload(payload: &[u8]) -> Result<IdentityPayload, ApplyError> {
 fn unpack_policy(payload_data: &[u8]) -> Result<Policy, ApplyError> {
      protobuf::parse_from_bytes(&payload_data).map_err(|err| {
          warn!(
-             "Invalid transaction: Failed to unmarshal IdentityPayload data: {:?}",
+             "Invalid transaction: Failed to unmarshal PolicyData data: {:?}",
              err
          );
          ApplyError::InvalidTransaction(format!(
-             "Failed to unmarshal IdentityPayload data: {:?}",
+             "Failed to unmarshal PolicyData data: {:?}",
              err
          ))
      })
@@ -174,11 +174,36 @@ fn unpack_policy(payload_data: &[u8]) -> Result<Policy, ApplyError> {
 fn unpack_policy_list(state_data: &[u8]) -> Result<PolicyList, ApplyError> {
      protobuf::parse_from_bytes(&state_data).map_err(|err| {
          warn!(
-             "Invalid transaction: Failed to unmarshal IdentityPayload data: {:?}",
+             "Invalid transaction: Failed to unmarshal PolicyList data: {:?}",
              err
          );
          ApplyError::InvalidTransaction(format!(
-             "Failed to unmarshal IdentityPayload data: {:?}",
+             "Failed to unmarshal PolicyList data: {:?}",
+             err
+         ))
+     })
+}
+fn unpack_role(role_data: &[u8]) -> Result<Role, ApplyError> {
+     protobuf::parse_from_bytes(&role_data).map_err(|err| {
+         warn!(
+             "Invalid transaction: Failed to unmarshal RoleData data: {:?}",
+             err
+         );
+         ApplyError::InvalidTransaction(format!(
+             "Failed to unmarshal RoleData data: {:?}",
+             err
+         ))
+     })
+}
+
+fn unpack_role_list(role_data: &[u8]) -> Result<RoleList, ApplyError> {
+     protobuf::parse_from_bytes(&role_data).map_err(|err| {
+         warn!(
+             "Invalid transaction: Failed to unmarshal RoleList data: {:?}",
+             err
+         );
+         ApplyError::InvalidTransaction(format!(
+             "Failed to unmarshal RoleList data: {:?}",
              err
          ))
      })
@@ -195,12 +220,13 @@ fn set_policy(payload: &IdentityPayload,
         return Err(ApplyError::InvalidTransaction(format!("The name must be set in a policy.")))
     }
     let address = get_policy_address(new_policy.get_name());
+    debug!("policy address set_policy {:?}", address);
     let entries_list = get_data(&address, context)?;
 
     let policies:Vec<Policy> = match entries_list {
                     None => vec![new_policy.clone()],
                     Some(entries) => {
-                        let policy_list = unpack_policy_list(&[entries[0]])?;
+                        let policy_list = unpack_policy_list(&entries)?;
                         let mut policy_vec: Vec<Policy> = policy_list.get_policies().to_vec().into_iter()
                                                                      .filter(|x| x.get_name() != new_policy.get_name())
                                                                      .collect();
@@ -210,20 +236,20 @@ fn set_policy(payload: &IdentityPayload,
                     }
             };
 
-
     let mut new_policy_list = PolicyList::new();
 
     new_policy_list.set_policies(protobuf::RepeatedField::from_vec(policies));
 
     let data = protobuf::Message::write_to_bytes(&new_policy_list).map_err(|err| {
-        ApplyError::InvalidTransaction(format!("Failed to serialize PolicyList: {:?}", err))
+        ApplyError::InternalError(format!("Failed to serialize PolicyList: {:?}", err))
     })?;
 
     context.set_state(&address, &data).map_err(|err| {
         warn!("Failed to set policy {} at {}", new_policy.get_name(), address);
         ApplyError::InternalError(format!("Unable to save policy {}", new_policy.get_name()))
     })?;
-    //What is the data that should go here?
+
+
     //Is clone best option?
 
     // context.add_event("identity/update".to_string(),
@@ -235,6 +261,77 @@ fn set_policy(payload: &IdentityPayload,
     debug!("Set policy : \n{:?}", new_policy);
     Ok(())
 }
+
+fn set_role(payload: &IdentityPayload,
+              context: &mut TransactionContext,
+          ) -> Result<(), ApplyError> {
+    let role = unpack_role(payload.get_data())?;
+    if role.get_policy_name().is_empty(){
+        return Err(ApplyError::InvalidTransaction(format!("A role must contain a policy name.")))
+    }
+    if role.get_name().is_empty(){
+        return Err(ApplyError::InvalidTransaction(format!("The name must be set in a role.")))
+    }
+    let policy_address = get_policy_address(role.get_policy_name());
+    debug!("policy address {:?}", policy_address);
+    let policy_entries_list = get_data(&policy_address, context)?;
+
+    let policy_exists  = match policy_entries_list {
+                        None => false,
+                        Some(entries) => {
+
+                            let policy_list = unpack_policy_list(&entries)?;
+                            let mut here = false;
+                            for policy in policy_list.get_policies().iter(){
+                                if policy.get_name() == role.get_policy_name(){
+                                     here = true;
+                                }
+                            }
+                            here
+                        }
+            };
+    if !policy_exists {
+        return Err(ApplyError::InvalidTransaction(format!(
+                "Cannot set Role: {}, the Policy: {} is not set.",
+                role.get_name(), role.get_policy_name())))
+    }
+
+    let role_address = get_role_address(role.get_name());
+    let role_entries_list = get_data(&role_address, context)?;
+
+
+    let role_list  = match role_entries_list {
+                    None => RoleList::new(),
+                    Some(entries) => unpack_role_list(&entries)?
+
+            };
+    let mut roles: Vec<Role> = role_list.get_roles().to_vec().into_iter()
+                                                         .filter(|x| x.get_name() != role.get_name())
+                                                         .collect();
+    roles.push(role.clone());
+    roles.sort_unstable_by(|r1, r2| r1.get_name().cmp(r2.get_name()));
+
+    let mut new_role_list = RoleList::new();
+
+    new_role_list.set_roles(protobuf::RepeatedField::from_vec(roles));
+
+    let data = protobuf::Message::write_to_bytes(&new_role_list).map_err(|err| {
+        ApplyError::InternalError(format!("Failed to serialize RoleList: {:?}", err))
+    })?;
+
+    context.set_state(&role_address, &data).map_err(|err| {
+        warn!("Failed to set role {} at {}", role.get_name(), role_address);
+        ApplyError::InternalError(format!("Unable to save role {}", role.get_name()))
+    })?;
+    debug!("Set role : \n{:?}", role);
+    // context.add_event("identity/update".to_string(),
+    //                  vec![("updated".to_string(), role.get_name().to_string())], &vec![])
+    //                  .map_err(|err| {
+    //                      warn!("Failed to add event {}", role.get_name());
+    //                      ApplyError::InternalError(format!("Failed to add event {}", role.get_name()))
+    //                  })
+    Ok(())
+    }
 
 fn _check_allowed_transactor(request: &TpProcessRequest,
                              context: &mut TransactionContext) {
@@ -265,8 +362,10 @@ fn _check_allowed_transactor(request: &TpProcessRequest,
 
 fn get_data(address: &str,
     context: &mut TransactionContext) -> Result<Option<Vec<u8>>, ApplyError> {
-        let entries_list = context.get_state(address)?;
-        return Ok(entries_list)
+        context.get_state(address).map_err(|err| {
+            warn!("Invalid transaction: Failed to load state: {:?}", err);
+            ApplyError::InvalidTransaction(format!("Failed to load state: {:?}", err))
+        })
     }
 
 fn to_hash(value: &str) -> String {
