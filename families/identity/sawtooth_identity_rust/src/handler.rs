@@ -28,7 +28,8 @@ use sawtooth_sdk::processor::handler::TransactionHandler;
 
 use sawtooth_sdk::messages::transaction::TransactionHeader;
 //use sawtooth_sdk::protobuf::setting_pb2::Setting;
-use identities::IdentityPayload;
+use identities::{ IdentityPayload,
+                  IdentityPayload_IdentityType};
 use sawtooth_sdk::messages::identity::{ Policy,
                                         PolicyList,
                                         Role,
@@ -124,26 +125,117 @@ impl TransactionHandler for IdentityTransactionHandler {
 
     fn apply(
         &self,
-        request: &TpProcessRequest,
+        transaction: &TpProcessRequest,
         context: &mut TransactionContext,
     ) -> Result<(), ApplyError> {
-        Err(ApplyError::InvalidTransaction(String::from("Transaction type unset")))
+        let mut payload = unpack_payload(transaction.get_payload())?;
+
+        match payload.get_field_type() {
+            IdentityPayload_IdentityType::ROLE => {
+                Ok(())
+            }
+            IdentityPayload_IdentityType::POLICY => {
+                set_policy(&payload, context)
+            }
+            IdentityPayload_IdentityType::IDENTITY_TYPE_UNSET => Err(
+                ApplyError::InvalidTransaction(String::from("The IdentityType must be either a ROLE or a POLICY")),
+            ),
+        }
     }
 
  }
 
-// fn unpack_payload(payload: &[u8]) -> Result<IdentityPayload, ApplyError> {
-//      protobuf::parse_from_bytes(&payload).map_err(|err| {
-//          warn!(
-//              "Invalid transaction: Failed to unmarshal IdentityTransaction: {:?}",
-//              err
-//          );
-//          ApplyError::InvalidTransaction(format!(
-//              "Failed to unmarshal IdentityTransaction: {:?}",
-//              err
-//          ))
-//      })
-// }
+fn unpack_payload(payload: &[u8]) -> Result<IdentityPayload, ApplyError> {
+     protobuf::parse_from_bytes(&payload).map_err(|err| {
+         warn!(
+             "Invalid transaction: Failed to unmarshal IdentityTransaction: {:?}",
+             err
+         );
+         ApplyError::InvalidTransaction(format!(
+             "Failed to unmarshal IdentityTransaction: {:?}",
+             err
+         ))
+     })
+}
+
+fn unpack_policy(payload_data: &[u8]) -> Result<Policy, ApplyError> {
+     protobuf::parse_from_bytes(&payload_data).map_err(|err| {
+         warn!(
+             "Invalid transaction: Failed to unmarshal IdentityPayload data: {:?}",
+             err
+         );
+         ApplyError::InvalidTransaction(format!(
+             "Failed to unmarshal IdentityPayload data: {:?}",
+             err
+         ))
+     })
+}
+
+fn unpack_policy_list(state_data: &[u8]) -> Result<PolicyList, ApplyError> {
+     protobuf::parse_from_bytes(&state_data).map_err(|err| {
+         warn!(
+             "Invalid transaction: Failed to unmarshal IdentityPayload data: {:?}",
+             err
+         );
+         ApplyError::InvalidTransaction(format!(
+             "Failed to unmarshal IdentityPayload data: {:?}",
+             err
+         ))
+     })
+}
+
+fn set_policy(payload: &IdentityPayload,
+              context: &mut TransactionContext,
+          ) -> Result<(), ApplyError> {
+    let new_policy = unpack_policy(payload.get_data())?;
+    if new_policy.get_entries().is_empty(){
+        return Err(ApplyError::InvalidTransaction(format!("At least one entry must be in a policy.")))
+    }
+    if new_policy.get_name().is_empty(){
+        return Err(ApplyError::InvalidTransaction(format!("The name must be set in a policy.")))
+    }
+    let address = get_policy_address(new_policy.get_name());
+    let entries_list = get_data(&address, context)?;
+
+    let policies:Vec<Policy> = match entries_list {
+                    None => vec![new_policy.clone()],
+                    Some(entries) => {
+                        let policy_list = unpack_policy_list(&[entries[0]])?;
+                        let mut policy_vec: Vec<Policy> = policy_list.get_policies().to_vec().into_iter()
+                                                                     .filter(|x| x.get_name() != new_policy.get_name())
+                                                                     .collect();
+                        policy_vec.push(new_policy.clone());
+                        policy_vec.sort_unstable_by(|p1, p2| p1.get_name().cmp(p2.get_name()));
+                        policy_vec
+                    }
+            };
+
+
+    let mut new_policy_list = PolicyList::new();
+
+    new_policy_list.set_policies(protobuf::RepeatedField::from_vec(policies));
+
+    let data = protobuf::Message::write_to_bytes(&new_policy_list).map_err(|err| {
+        ApplyError::InvalidTransaction(format!("Failed to serialize PolicyList: {:?}", err))
+    })?;
+
+    context.set_state(&address, &data).map_err(|err| {
+        warn!("Failed to set policy {} at {}", new_policy.get_name(), address);
+        ApplyError::InternalError(format!("Unable to save policy {}", new_policy.get_name()))
+    })?;
+    //What is the data that should go here?
+    //Is clone best option?
+
+    // context.add_event("identity/update".to_string(),
+    //                  vec![("updated".to_string(), new_policy.get_name().to_string())], &vec![])
+    //                  .map_err(|err| {
+    //                      warn!("Failed to add event {}", new_policy.get_name());
+    //                      ApplyError::InternalError(format!("Failed to add event {}", new_policy.get_name()))
+    //                  })
+    debug!("Set policy : \n{:?}", new_policy);
+    Ok(())
+}
+
 fn _check_allowed_transactor(request: &TpProcessRequest,
                              context: &mut TransactionContext) {
                                  ()
@@ -171,8 +263,36 @@ fn _check_allowed_transactor(request: &TpProcessRequest,
     // }
 }
 
-fn _get_data(header: &TransactionHeader,
+fn get_data(address: &str,
     context: &mut TransactionContext) -> Result<Option<Vec<u8>>, ApplyError> {
-        Err(ApplyError::InvalidTransaction(String::from("Transaction type unset")))
-
+        let entries_list = context.get_state(address)?;
+        return Ok(entries_list)
     }
+
+fn to_hash(value: &str) -> String {
+    let mut sha = Sha256::new();
+    sha.input(value.as_bytes());
+    sha.result_str()
+}
+
+fn get_policy_address(policy_name: &str) -> String {
+    format!("{}{}{}", IDENTITY_NAMESPACE.to_string(), POLICY_PREFIX.to_string(),
+            to_hash(policy_name)[..62].to_string())
+}
+
+const _MAX_KEY_PARTS: usize = 4;
+const _FIRST_ADDRESS_PART_SIZE: usize = 14;
+const _ADDRESS_PART_SIZE: usize = 16;
+
+fn get_role_address(role_name: &str) -> String {
+   let key_parts: Vec<&str> = role_name.splitn(_MAX_KEY_PARTS, ".").collect();
+   let mut addr_parts: Vec<_> = vec![to_hash(key_parts[0])[.._FIRST_ADDRESS_PART_SIZE].to_string()];
+   addr_parts.extend(key_parts[1..].iter().map(|x| to_hash(x)[.._ADDRESS_PART_SIZE].to_string()));
+   let len_addr_parts = addr_parts.len();
+   addr_parts.extend(
+       vec![get_empty_part();_MAX_KEY_PARTS - &len_addr_parts].iter().cloned());
+   format!("{}{}{}", IDENTITY_NAMESPACE.to_string(), ROLE_PREFIX.to_string(), addr_parts.join(""))
+}
+fn get_empty_part() -> String {
+    to_hash("")[.._ADDRESS_PART_SIZE].to_string()
+}
