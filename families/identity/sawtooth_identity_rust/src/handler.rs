@@ -23,11 +23,7 @@ use sawtooth_sdk::messages::processor::TpProcessRequest;
 use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
-//use sawtooth_sdk::messaging::future::FutureTimeoutError;
-//use sawtooth_sdk::processor::exceptions::InternalError;
-
-use sawtooth_sdk::messages::transaction::TransactionHeader;
-//use sawtooth_sdk::protobuf::setting_pb2::Setting;
+use sawtooth_sdk::messages::setting::Setting;
 use identities::{ IdentityPayload,
                   IdentityPayload_IdentityType};
 use sawtooth_sdk::messages::identity::{ Policy,
@@ -47,8 +43,6 @@ const SETTING_NAMESPACE: &str = "000000";
 const _SETTING_MAX_KEY_PARTS: usize = 4;
 const _SETTING_ADDRESS_PART_SIZE: usize = 16;
 
-// Number of seconds to wait for state operations to succeed
-const STATE_TIMEOUT_SEC: u32 = 10;
 
 ///Computes the address for the given setting key.
 /// Keys are broken into four parts, based on the dots in the string. For
@@ -128,7 +122,10 @@ impl TransactionHandler for IdentityTransactionHandler {
         transaction: &TpProcessRequest,
         context: &mut TransactionContext,
     ) -> Result<(), ApplyError> {
-        let payload = unpack_payload(transaction.get_payload())?;
+
+        check_allowed_transactor(transaction, context)?;
+
+        let payload: IdentityPayload = unpack_data(transaction.get_payload())?;
 
         match payload.get_field_type() {
             IdentityPayload_IdentityType::ROLE => {
@@ -145,8 +142,10 @@ impl TransactionHandler for IdentityTransactionHandler {
 
  }
 
-fn unpack_payload(payload: &[u8]) -> Result<IdentityPayload, ApplyError> {
-     protobuf::parse_from_bytes(&payload).map_err(|err| {
+fn unpack_data<T>(data: &[u8]) -> Result<T, ApplyError>
+    where T: protobuf::Message
+{
+     protobuf::parse_from_bytes(&data).map_err(|err| {
          warn!(
              "Invalid transaction: Failed to unmarshal IdentityTransaction: {:?}",
              err
@@ -158,61 +157,10 @@ fn unpack_payload(payload: &[u8]) -> Result<IdentityPayload, ApplyError> {
      })
 }
 
-fn unpack_policy(payload_data: &[u8]) -> Result<Policy, ApplyError> {
-     protobuf::parse_from_bytes(&payload_data).map_err(|err| {
-         warn!(
-             "Invalid transaction: Failed to unmarshal PolicyData data: {:?}",
-             err
-         );
-         ApplyError::InvalidTransaction(format!(
-             "Failed to unmarshal PolicyData data: {:?}",
-             err
-         ))
-     })
-}
-
-fn unpack_policy_list(state_data: &[u8]) -> Result<PolicyList, ApplyError> {
-     protobuf::parse_from_bytes(&state_data).map_err(|err| {
-         warn!(
-             "Invalid transaction: Failed to unmarshal PolicyList data: {:?}",
-             err
-         );
-         ApplyError::InvalidTransaction(format!(
-             "Failed to unmarshal PolicyList data: {:?}",
-             err
-         ))
-     })
-}
-fn unpack_role(role_data: &[u8]) -> Result<Role, ApplyError> {
-     protobuf::parse_from_bytes(&role_data).map_err(|err| {
-         warn!(
-             "Invalid transaction: Failed to unmarshal RoleData data: {:?}",
-             err
-         );
-         ApplyError::InvalidTransaction(format!(
-             "Failed to unmarshal RoleData data: {:?}",
-             err
-         ))
-     })
-}
-
-fn unpack_role_list(role_data: &[u8]) -> Result<RoleList, ApplyError> {
-     protobuf::parse_from_bytes(&role_data).map_err(|err| {
-         warn!(
-             "Invalid transaction: Failed to unmarshal RoleList data: {:?}",
-             err
-         );
-         ApplyError::InvalidTransaction(format!(
-             "Failed to unmarshal RoleList data: {:?}",
-             err
-         ))
-     })
-}
-
 fn set_policy(payload: &IdentityPayload,
               context: &mut TransactionContext,
           ) -> Result<(), ApplyError> {
-    let new_policy = unpack_policy(payload.get_data())?;
+    let new_policy: Policy = unpack_data(payload.get_data())?;
     if new_policy.get_entries().is_empty(){
         return Err(ApplyError::InvalidTransaction(format!("At least one entry must be in a policy.")))
     }
@@ -221,12 +169,12 @@ fn set_policy(payload: &IdentityPayload,
     }
     let address = get_policy_address(new_policy.get_name());
     debug!("policy address set_policy {:?}", address);
-    let entries_list = get_data(&address, context)?;
+    let entries_list = get_state_data(&address, context)?;
 
     let policies:Vec<Policy> = match entries_list {
                     None => vec![new_policy.clone()],
                     Some(entries) => {
-                        let policy_list = unpack_policy_list(&entries)?;
+                        let policy_list: PolicyList = unpack_data(&entries)?;
                         let mut policy_vec: Vec<Policy> = policy_list.get_policies().to_vec().into_iter()
                                                                      .filter(|x| x.get_name() != new_policy.get_name())
                                                                      .collect();
@@ -251,21 +199,21 @@ fn set_policy(payload: &IdentityPayload,
 
 
     //Is clone best option?
-
+    debug!("Set policy : \n{:?}", new_policy);
+    Ok(())
     // context.add_event("identity/update".to_string(),
     //                  vec![("updated".to_string(), new_policy.get_name().to_string())], &vec![])
     //                  .map_err(|err| {
     //                      warn!("Failed to add event {}", new_policy.get_name());
     //                      ApplyError::InternalError(format!("Failed to add event {}", new_policy.get_name()))
     //                  })
-    debug!("Set policy : \n{:?}", new_policy);
-    Ok(())
+
 }
 
 fn set_role(payload: &IdentityPayload,
               context: &mut TransactionContext,
           ) -> Result<(), ApplyError> {
-    let role = unpack_role(payload.get_data())?;
+    let role: Role = unpack_data(payload.get_data())?;
     if role.get_policy_name().is_empty(){
         return Err(ApplyError::InvalidTransaction(format!("A role must contain a policy name.")))
     }
@@ -274,13 +222,13 @@ fn set_role(payload: &IdentityPayload,
     }
     let policy_address = get_policy_address(role.get_policy_name());
     debug!("policy address {:?}", policy_address);
-    let policy_entries_list = get_data(&policy_address, context)?;
+    let policy_entries_list = get_state_data(&policy_address, context)?;
 
     let policy_exists  = match policy_entries_list {
                         None => false,
                         Some(entries) => {
 
-                            let policy_list = unpack_policy_list(&entries)?;
+                            let policy_list: PolicyList = unpack_data(&entries)?;
                             let mut here = false;
                             for policy in policy_list.get_policies().iter(){
                                 if policy.get_name() == role.get_policy_name(){
@@ -297,12 +245,12 @@ fn set_role(payload: &IdentityPayload,
     }
 
     let role_address = get_role_address(role.get_name());
-    let role_entries_list = get_data(&role_address, context)?;
+    let role_entries_list = get_state_data(&role_address, context)?;
 
 
     let role_list  = match role_entries_list {
                     None => RoleList::new(),
-                    Some(entries) => unpack_role_list(&entries)?
+                    Some(entries) => unpack_data(&entries)?
 
             };
     let mut roles: Vec<Role> = role_list.get_roles().to_vec().into_iter()
@@ -324,43 +272,47 @@ fn set_role(payload: &IdentityPayload,
         ApplyError::InternalError(format!("Unable to save role {}", role.get_name()))
     })?;
     debug!("Set role : \n{:?}", role);
+    Ok(())
     // context.add_event("identity/update".to_string(),
     //                  vec![("updated".to_string(), role.get_name().to_string())], &vec![])
     //                  .map_err(|err| {
     //                      warn!("Failed to add event {}", role.get_name());
     //                      ApplyError::InternalError(format!("Failed to add event {}", role.get_name()))
     //                  })
-    Ok(())
     }
 
-fn _check_allowed_transactor(request: &TpProcessRequest,
-                             context: &mut TransactionContext) {
-                                 ()
-    //let header = unpack_payload(request.header);
-    // let entries_list = _get_data(ALLOWED_SIGNER_ADDRESS, context).unwrap_or_else(|err| {
-    //     ApplyError::InvalidTransaction(format!(
-    //         "Invalid Transaction. Failed to get state {:?}",
-    //         err
-    //     ));
-    //     ()
-    // });
+fn check_allowed_transactor(transaction: &TpProcessRequest,
+                             context: &mut TransactionContext
+                            ) -> Result<(), ApplyError> {
 
-    // match entries_list {
-    //     None => ()
-    //         //request.get_signature();
-    //         //println!("{:?}", "TEST2" );
-    //         // ApplyError::InvalidTransaction(format!(
-    //         // "The transaction signer is not authorized to submit transactions: {:?}",
-    //         // &header.signer_public_key
-    //     //))}
-    //     Some => {
-    //         ()
-    //     }
-    //
-    // }
+    let header = transaction.get_header();
+
+    let entries_list = get_state_data(&get_allowed_signer_address(), context)?;
+
+    if entries_list == None {
+        return Err(ApplyError::InvalidTransaction(format!("The transaction signer is
+                                                  not authorized to submit transactions: {:?}",
+                                                  header.get_signer_public_key())))
+    }
+
+    let setting: Setting = unpack_data(&entries_list.unwrap())?;
+
+    for entry in setting.get_entries().iter(){
+        if entry.get_key() == ALLOWED_SIGNER_SETTING{
+            let allowed_signer: Vec<&str> = entry.get_value().split(",").collect();
+            if allowed_signer.contains(&header.get_signer_public_key()){
+                return Ok(())
+            }
+        }
+    }
+
+    Err(ApplyError::InvalidTransaction(format!("The transaction signer is
+                                              not authorized to submit transactions: {:?}",
+                                              header.get_signer_public_key())))
+
 }
 
-fn get_data(address: &str,
+fn get_state_data(address: &str,
     context: &mut TransactionContext) -> Result<Option<Vec<u8>>, ApplyError> {
         context.get_state(address).map_err(|err| {
             warn!("Invalid transaction: Failed to load state: {:?}", err);
@@ -384,13 +336,13 @@ const _FIRST_ADDRESS_PART_SIZE: usize = 14;
 const _ADDRESS_PART_SIZE: usize = 16;
 
 fn get_role_address(role_name: &str) -> String {
-   let key_parts: Vec<&str> = role_name.splitn(_MAX_KEY_PARTS, ".").collect();
-   let mut addr_parts: Vec<_> = vec![to_hash(key_parts[0])[.._FIRST_ADDRESS_PART_SIZE].to_string()];
-   addr_parts.extend(key_parts[1..].iter().map(|x| to_hash(x)[.._ADDRESS_PART_SIZE].to_string()));
-   let len_addr_parts = addr_parts.len();
-   addr_parts.extend(
-       vec![get_empty_part();_MAX_KEY_PARTS - &len_addr_parts].iter().cloned());
-   format!("{}{}{}", IDENTITY_NAMESPACE.to_string(), ROLE_PREFIX.to_string(), addr_parts.join(""))
+    let key_parts: Vec<&str> = role_name.splitn(_MAX_KEY_PARTS, ".").collect();
+    let mut addr_parts: Vec<_> = vec![to_hash(key_parts[0])[.._FIRST_ADDRESS_PART_SIZE].to_string()];
+    addr_parts.extend(key_parts[1..].iter().map(|x| to_hash(x)[.._ADDRESS_PART_SIZE].to_string()));
+    let len_addr_parts = addr_parts.len();
+    addr_parts.extend(
+          vec![get_empty_part();_MAX_KEY_PARTS - &len_addr_parts].iter().cloned());
+    format!("{}{}{}", IDENTITY_NAMESPACE.to_string(), ROLE_PREFIX.to_string(), addr_parts.join(""))
 }
 fn get_empty_part() -> String {
     to_hash("")[.._ADDRESS_PART_SIZE].to_string()
