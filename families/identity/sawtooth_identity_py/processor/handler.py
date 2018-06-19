@@ -23,11 +23,11 @@ from sawtooth_sdk.processor.exceptions import InvalidTransaction
 from sawtooth_sdk.processor.exceptions import InternalError
 from sawtooth_sdk.protobuf.setting_pb2 import Setting
 
-from sawtooth_identity.protobuf.identity_pb2 import Policy
-from sawtooth_identity.protobuf.identity_pb2 import PolicyList
-from sawtooth_identity.protobuf.identity_pb2 import Role
-from sawtooth_identity.protobuf.identity_pb2 import RoleList
-from sawtooth_identity.protobuf.identities_pb2 import IdentityPayload
+from sawtooth_identity_py.protobuf.identity_pb2 import Policy
+from sawtooth_identity_py.protobuf.identity_pb2 import PolicyList
+from sawtooth_identity_py.protobuf.identity_pb2 import Role
+from sawtooth_identity_py.protobuf.identity_pb2 import RoleList
+from sawtooth_identity_py.protobuf.identities_pb2 import IdentityPayload
 
 LOGGER = logging.getLogger(__name__)
 

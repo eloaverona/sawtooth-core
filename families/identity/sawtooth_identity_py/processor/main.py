@@ -27,13 +27,13 @@ from sawtooth_sdk.processor.log import log_configuration
 from sawtooth_sdk.processor.config import get_log_config
 from sawtooth_sdk.processor.config import get_log_dir
 from sawtooth_sdk.processor.config import get_config_dir
-from sawtooth_identity.processor.handler import IdentityTransactionHandler
-from sawtooth_identity.processor.config.identity import IdentityConfig
-from sawtooth_identity.processor.config.identity import \
+from sawtooth_identity_py.processor.handler import IdentityTransactionHandler
+from sawtooth_identity_py.processor.config.identity import IdentityConfig
+from sawtooth_identity_py.processor.config.identity import \
     load_default_identity_config
-from sawtooth_identity.processor.config.identity import \
+from sawtooth_identity_py.processor.config.identity import \
     load_toml_identity_config
-from sawtooth_identity.processor.config.identity import \
+from sawtooth_identity_py.processor.config.identity import \
     merge_identity_config
 
 

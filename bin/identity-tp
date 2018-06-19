@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
     'families', 'identity'))
 
-from sawtooth_identity.processor.main import main
+from sawtooth_identity_py.processor.main import main
 
 if __name__ == '__main__':
     main()

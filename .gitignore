@@ -51,7 +51,7 @@
 /families/smallbank/smallbank_go/src/protobuf/
 /families/smallbank/smallbank_go/bin/
 /families/block_info/sawtooth_block_info/protobuf
-/families/identity/sawtooth_identity/protobuf
+/families/identity/sawtooth_identity_py/protobuf
 /families/smallbank/smallbank_rust/target/
 /families/smallbank/smallbank_rust/Cargo.lock
 /families/smallbank/smallbank_rust/bin/

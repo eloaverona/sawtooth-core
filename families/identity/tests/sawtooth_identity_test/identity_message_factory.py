@@ -15,12 +15,12 @@
 import hashlib
 import logging
 from sawtooth_processor_test.message_factory import MessageFactory
-from sawtooth_identity.protobuf.identities_pb2 import IdentityPayload
-from sawtooth_identity.protobuf.identity_pb2 import Policy
-from sawtooth_identity.protobuf.identity_pb2 import PolicyList
-from sawtooth_identity.protobuf.identity_pb2 import Role
-from sawtooth_identity.protobuf.identity_pb2 import RoleList
-from sawtooth_identity.protobuf.setting_pb2 import Setting
+from sawtooth_identity_py.protobuf.identities_pb2 import IdentityPayload
+from sawtooth_identity_py.protobuf.identity_pb2 import Policy
+from sawtooth_identity_py.protobuf.identity_pb2 import PolicyList
+from sawtooth_identity_py.protobuf.identity_pb2 import Role
+from sawtooth_identity_py.protobuf.identity_pb2 import RoleList
+from sawtooth_identity_py.protobuf.setting_pb2 import Setting
 
 _MAX_KEY_PARTS = 4
 _FIRST_ADDRESS_PART_SIZE = 14
