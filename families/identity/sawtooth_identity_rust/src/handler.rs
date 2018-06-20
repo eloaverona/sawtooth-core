@@ -18,6 +18,7 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use protobuf;
+use std::collections::HashMap;
 
 use sawtooth_sdk::messages::processor::TpProcessRequest;
 use sawtooth_sdk::processor::handler::ApplyError;
@@ -208,7 +209,9 @@ fn set_policy(data: &[u8],
         ApplyError::InternalError(format!("Failed to serialize PolicyList: {:?}", err))
     })?;
 
-    context.set_state(&address, &data).map_err(|err| {
+    let mut state_entries = HashMap::new();
+    state_entries.insert(address.clone(), data);
+    context.set_state(state_entries).map_err(|err| {
         warn!("Failed to set policy {} at {}", new_policy.get_name(), address);
         ApplyError::InternalError(format!("Unable to save policy {}", new_policy.get_name()))
     })?;
@@ -285,7 +288,9 @@ fn set_role(data: &[u8],
         ApplyError::InternalError(format!("Failed to serialize RoleList: {:?}", err))
     })?;
 
-    context.set_state(&role_address, &data).map_err(|err| {
+    let mut state_entries = HashMap::new();
+    state_entries.insert(role_address.clone(), data);
+    context.set_state(state_entries).map_err(|err| {
         warn!("Failed to set role {} at {}", role.get_name(), role_address);
         ApplyError::InternalError(format!("Unable to save role {}", role.get_name()))
     })?;
@@ -333,7 +338,7 @@ fn check_allowed_transactor(transaction: &TpProcessRequest,
 
 fn get_state_data(address: &str,
     context: &mut TransactionContext) -> Result<Option<Vec<u8>>, ApplyError> {
-        context.get_state(address).map_err(|err| {
+        context.get_state(vec![address.to_string()]).map_err(|err| {
             warn!("Invalid transaction: Failed to load state: {:?}", err);
             ApplyError::InvalidTransaction(format!("Failed to load state: {:?}", err))
         })
