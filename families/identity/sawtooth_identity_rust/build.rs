@@ -17,6 +17,7 @@
 
 extern crate glob;
 extern crate protoc_rust;
+extern crate cfg_if;
 
 use protoc_rust::Customize;
 
@@ -35,7 +36,20 @@ fn main() {
             ..Default::default()
         },
     }).expect("Error generating rust files from identity protos");
-}
+
+    #[cfg(target_arch = "wasm32")]
+    protoc_rust::run(protoc_rust::Args {
+        out_dir: "src/",
+        input: &[
+          "../../../protos/identity.proto",
+          "../../../protos/setting.proto"
+        ],
+        includes: &["../../../protos"],
+        customize: Customize {
+          ..Default::default()
+        }
+    }).expect("protoc");
+} 
 
 fn glob_simple(pattern: &str) -> Vec<String> {
     glob::glob(pattern)

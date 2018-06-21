@@ -15,22 +15,62 @@
  * ------------------------------------------------------------------------------
  */
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use protobuf;
-use std::collections::HashMap;
+ cfg_if! {
+      if #[cfg(target_arch = "wasm32")] {
+          use sabre_sdk::ApplyError;
+          use sabre_sdk::TransactionContext;
+          use sabre_sdk::TransactionHandler;
+          use sabre_sdk::TpProcessRequest;
+          use sabre_sdk::{WasmPtr, execute_entrypoint};
+          use identity::{ Policy,
+                          PolicyList,
+                          Role,
+                          RoleList};
+          use setting::Setting;
 
-use sawtooth_sdk::messages::processor::TpProcessRequest;
-use sawtooth_sdk::processor::handler::ApplyError;
-use sawtooth_sdk::processor::handler::TransactionContext;
-use sawtooth_sdk::processor::handler::TransactionHandler;
-use sawtooth_sdk::messages::setting::Setting;
-use identities::{ IdentityPayload,
-                  IdentityPayload_IdentityType};
-use sawtooth_sdk::messages::identity::{ Policy,
-                                        PolicyList,
-                                        Role,
-                                        RoleList};
+      } else {
+
+          use sawtooth_sdk::messages::processor::TpProcessRequest;
+          use sawtooth_sdk::processor::handler::ApplyError;
+          use sawtooth_sdk::processor::handler::TransactionContext;
+          use sawtooth_sdk::processor::handler::TransactionHandler;
+          use sawtooth_sdk::messages::setting::Setting;
+          use sawtooth_sdk::messages::identity::{ Policy,
+                                                  PolicyList,
+                                                  Role,
+                                                  RoleList};
+      }
+
+ }
+ use identities::{ IdentityPayload,
+                   IdentityPayload_IdentityType};
+
+ use crypto::digest::Digest;
+ use crypto::sha2::Sha256;
+ use protobuf;
+ use std::collections::HashMap;
+
+  #[cfg(target_arch = "wasm32")]
+  // Sabre apply must return a bool
+  fn apply(
+      request: &TpProcessRequest,
+      context: &mut TransactionContext,
+  ) -> Result<bool, ApplyError> {
+
+      let handler = IdentityTransactionHandler::new();
+      match handler.apply(request, context) {
+          Ok(_) => Ok(true),
+          Err(err) => Err(err)
+      }
+
+  }
+
+  #[cfg(target_arch = "wasm32")]
+  #[no_mangle]
+  pub unsafe fn entrypoint(payload: WasmPtr, signer: WasmPtr) -> i32 {
+      execute_entrypoint(payload, signer, apply)
+  }
+
 
 
 // The identity namespace is special: it is not derived from a hash.
@@ -150,7 +190,9 @@ impl TransactionHandler for IdentityTransactionHandler {
 fn unpack_data<T>(data: &[u8]) -> Result<T, ApplyError>
     where T: protobuf::Message
 {
+
      protobuf::parse_from_bytes(&data).map_err(|err| {
+          #[cfg(not(target_arch = "wasm32"))]
          warn!(
              "Invalid transaction: Failed to unmarshal IdentityTransaction: {:?}",
              err
@@ -212,18 +254,23 @@ fn set_policy(data: &[u8],
     let mut state_entries = HashMap::new();
     state_entries.insert(address.clone(), data);
     context.set_state(state_entries).map_err(|err| {
+         #[cfg(not(target_arch = "wasm32"))]
         warn!("Failed to set policy {} at {}", new_policy.get_name(), address);
         ApplyError::InternalError(format!("Unable to save policy {}", new_policy.get_name()))
     })?;
-
+     #[cfg(not(target_arch = "wasm32"))]
     debug!("Set policy : \n{:?}", new_policy);
 
+     #[cfg(not(target_arch = "wasm32"))]
     context.add_event("identity/update".to_string(),
                      vec![("updated".to_string(), new_policy.get_name().to_string())], &vec![])
                      .map_err(|err| {
+                          #[cfg(not(target_arch = "wasm32"))]
                          warn!("Failed to add event {}", new_policy.get_name());
                          ApplyError::InternalError(format!("Failed to add event {}", new_policy.get_name()))
-                     })
+                     })?;
+
+     Ok(())
 
 }
 
@@ -291,17 +338,23 @@ fn set_role(data: &[u8],
     let mut state_entries = HashMap::new();
     state_entries.insert(role_address.clone(), data);
     context.set_state(state_entries).map_err(|err| {
+         #[cfg(not(target_arch = "wasm32"))]
         warn!("Failed to set role {} at {}", role.get_name(), role_address);
         ApplyError::InternalError(format!("Unable to save role {}", role.get_name()))
     })?;
+     #[cfg(not(target_arch = "wasm32"))]
     debug!("Set role : \n{:?}", role);
 
+     #[cfg(not(target_arch = "wasm32"))]
     context.add_event("identity/update".to_string(),
                      vec![("updated".to_string(), role.get_name().to_string())], &vec![])
                      .map_err(|err| {
+                          #[cfg(not(target_arch = "wasm32"))]
                          warn!("Failed to add event {}", role.get_name());
                          ApplyError::InternalError(format!("Failed to add event {}", role.get_name()))
-                     })
+                     })?;
+
+    Ok(())
     }
 
 fn check_allowed_transactor(transaction: &TpProcessRequest,
@@ -339,6 +392,7 @@ fn check_allowed_transactor(transaction: &TpProcessRequest,
 fn get_state_data(address: &str,
     context: &mut TransactionContext) -> Result<Option<Vec<u8>>, ApplyError> {
         context.get_state(vec![address.to_string()]).map_err(|err| {
+             #[cfg(not(target_arch = "wasm32"))]
             warn!("Invalid transaction: Failed to load state: {:?}", err);
             ApplyError::InvalidTransaction(format!("Failed to load state: {:?}", err))
         })
