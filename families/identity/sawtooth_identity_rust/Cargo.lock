@@ -435,7 +435,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sabre-sdk"
 version = "0.1.0"
-source = "git+https://github.com/hyperledger/sawtooth-sabre.git#5eb316de03cf5abd5df03019fd6a74b9d52add4d"
+source = "git+https://github.com/hyperledger/sawtooth-sabre#5eb316de03cf5abd5df03019fd6a74b9d52add4d"
 dependencies = [
  "protobuf 1.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -454,7 +454,7 @@ dependencies = [
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust_crypto 0.0.1 (git+https://github.com/agunde406/rust-crypto?branch=wasm_sha2)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "sabre-sdk 0.1.0 (git+https://github.com/hyperledger/sawtooth-sabre.git)",
+ "sabre-sdk 0.1.0 (git+https://github.com/hyperledger/sawtooth-sabre)",
  "sawtooth_sdk 0.1.0",
  "zmq 0.8.2 (git+https://github.com/erickt/rust-zmq?branch=release/v0.8)",
 ]
@@ -765,7 +765,7 @@ dependencies = [
 "checksum rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)" = "f76d05d3993fd5f4af9434e8e436db163a12a9d40e1a58a726f27a01dfd12a2a"
 "checksum rust_crypto 0.0.1 (git+https://github.com/agunde406/rust-crypto?branch=wasm_sha2)" = "<none>"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-"checksum sabre-sdk 0.1.0 (git+https://github.com/hyperledger/sawtooth-sabre.git)" = "<none>"
+"checksum sabre-sdk 0.1.0 (git+https://github.com/hyperledger/sawtooth-sabre)" = "<none>"
 "checksum secp256k1 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3f9936100bc0f85f254359b0f86d9aefe8440d00d40d945dbe1908206574b81e"
 "checksum serde 1.0.66 (registry+https://github.com/rust-lang/crates.io-index)" = "e9a2d9a9ac5120e0f768801ca2b58ad6eec929dc9d1d616c162f208869c2ce95"
 "checksum serde-value 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "52903ade2290cbd61a0937a66a268f26cebf246e3ddd7964a8babb297111fb0d"

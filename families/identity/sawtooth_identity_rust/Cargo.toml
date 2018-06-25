@@ -27,8 +27,7 @@ cfg-if = "0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
-sabre-sdk = {git = "https://github.com/hyperledger/sawtooth-sabre.git" } #path = "../../../../sawtooth-sabre/sdk"
-
+sabre-sdk = {git = "https://github.com/hyperledger/sawtooth-sabre"}
 
 [target.'cfg(unix)'.dependencies]
 rust-crypto = "0.2"

@@ -60,7 +60,7 @@
       let handler = IdentityTransactionHandler::new();
       match handler.apply(request, context) {
           Ok(_) => Ok(true),
-          Err(err) => Err(err)
+          Err(err) => Err(err)         
       }
 
   }
@@ -107,8 +107,9 @@ fn setting_key_to_address(key: &str) -> String {
     // Split the key into _SETTING_MAX_KEY_PARTS parts, maximum, compute the
     // short hash of each, and then pad if necessary
 
-    let key_parts: Vec<&str> = key.splitn(_SETTING_MAX_KEY_PARTS, ".").collect();
-    let mut addr_parts: Vec<_> = key_parts.iter().map(|x| setting_short_hash(x)).collect();
+    let mut addr_parts: Vec<_> =key.splitn(_SETTING_MAX_KEY_PARTS, ".")
+                                   .map(|x| setting_short_hash(x))
+                                   .collect();
     let len_addr_parts = addr_parts.len();
     addr_parts.extend(
         vec![get_setting_address_padding();_SETTING_MAX_KEY_PARTS - &len_addr_parts].iter().cloned());
@@ -192,7 +193,7 @@ fn unpack_data<T>(data: &[u8]) -> Result<T, ApplyError>
 {
 
      protobuf::parse_from_bytes(&data).map_err(|err| {
-          #[cfg(not(target_arch = "wasm32"))]
+         #[cfg(not(target_arch = "wasm32"))]
          warn!(
              "Invalid transaction: Failed to unmarshal IdentityTransaction: {:?}",
              err
@@ -361,6 +362,7 @@ fn check_allowed_transactor(transaction: &TpProcessRequest,
                              context: &mut TransactionContext
                             ) -> Result<(), ApplyError> {
 
+
     let header = transaction.get_header();
 
     let entries_list = get_state_data(&get_allowed_signer_address(), context)?;
@@ -415,11 +417,11 @@ const _ADDRESS_PART_SIZE: usize = 16;
 
 fn get_role_address(role_name: &str) -> String {
     // split the key into 4 parts, maximum
-    let key_parts: Vec<&str> = role_name.splitn(_MAX_KEY_PARTS, ".").collect();
+    let mut key_parts = role_name.splitn(_MAX_KEY_PARTS, ".");
 
     // compute the short hash of each part
-    let mut addr_parts: Vec<_> = vec![to_hash(key_parts[0])[.._FIRST_ADDRESS_PART_SIZE].to_string()];
-    addr_parts.extend(key_parts[1..].iter().map(|x| to_hash(x)[.._ADDRESS_PART_SIZE].to_string()));
+    let mut addr_parts: Vec<_> = vec![to_hash(key_parts.next().unwrap())[.._FIRST_ADDRESS_PART_SIZE].to_string()];
+    addr_parts.extend(key_parts.map(|x| to_hash(x)[.._ADDRESS_PART_SIZE].to_string()));
     let len_addr_parts = addr_parts.len();
 
     // pad the parts with the empty hash, if needed
