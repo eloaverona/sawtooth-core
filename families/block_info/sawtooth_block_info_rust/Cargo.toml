@@ -28,7 +28,7 @@ hex = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 rust_crypto = {git = "https://github.com/agunde406/rust-crypto", branch="wasm_sha2"}
-sabre-sdk = {path = "../../../sdk"}
+sabre-sdk = {git = "https://github.com/hyperledger/sawtooth-sabre"}
 
 [target.'cfg(unix)'.dependencies]
 sawtooth_sdk = { path = "../../../sdk/rust" }

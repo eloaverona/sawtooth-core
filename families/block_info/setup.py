@@ -43,5 +43,5 @@ setup(
     data_files=data_files,
     entry_points={
         'console_scripts':
-        ['block-info-tp= sawtooth_block_info.processor.main:main']
+        ['block-info-tp= sawtooth_block_info_py.processor.main:main']
     })

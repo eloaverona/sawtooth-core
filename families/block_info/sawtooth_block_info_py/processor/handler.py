@@ -20,17 +20,17 @@ from sawtooth_sdk.processor.handler import TransactionHandler
 from sawtooth_sdk.processor.exceptions import InvalidTransaction
 from sawtooth_sdk.processor.exceptions import InternalError
 
-from sawtooth_block_info.protobuf.block_info_pb2 import BlockInfoTxn
-from sawtooth_block_info.protobuf.block_info_pb2 import BlockInfo
-from sawtooth_block_info.protobuf.block_info_pb2 import BlockInfoConfig
+from sawtooth_block_info_py.protobuf.block_info_pb2 import BlockInfoTxn
+from sawtooth_block_info_py.protobuf.block_info_pb2 import BlockInfo
+from sawtooth_block_info_py.protobuf.block_info_pb2 import BlockInfoConfig
 
-from sawtooth_block_info.common import FAMILY_NAME
-from sawtooth_block_info.common import FAMILY_VERSION
-from sawtooth_block_info.common import NAMESPACE
-from sawtooth_block_info.common import CONFIG_ADDRESS
-from sawtooth_block_info.common import DEFAULT_SYNC_TOLERANCE
-from sawtooth_block_info.common import DEFAULT_TARGET_COUNT
-from sawtooth_block_info.common import create_block_address
+from sawtooth_block_info_py.common import FAMILY_NAME
+from sawtooth_block_info_py.common import FAMILY_VERSION
+from sawtooth_block_info_py.common import NAMESPACE
+from sawtooth_block_info_py.common import CONFIG_ADDRESS
+from sawtooth_block_info_py.common import DEFAULT_SYNC_TOLERANCE
+from sawtooth_block_info_py.common import DEFAULT_TARGET_COUNT
+from sawtooth_block_info_py.common import create_block_address
 
 
 LOGGER = logging.getLogger(__name__)

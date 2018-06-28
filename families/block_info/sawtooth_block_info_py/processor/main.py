@@ -27,13 +27,13 @@ from sawtooth_sdk.processor.log import log_configuration
 from sawtooth_sdk.processor.config import get_log_config
 from sawtooth_sdk.processor.config import get_log_dir
 from sawtooth_sdk.processor.config import get_config_dir
-from sawtooth_block_info.processor.handler import BlockInfoTransactionHandler
-from sawtooth_block_info.processor.config.block_info import BlockInfoConfig
-from sawtooth_block_info.processor.config.block_info import \
+from sawtooth_block_info_py.processor.handler import BlockInfoTransactionHandler
+from sawtooth_block_info_py.processor.config.block_info import BlockInfoConfig
+from sawtooth_block_info_py.processor.config.block_info import \
     load_default_block_info_config
-from sawtooth_block_info.processor.config.block_info import \
+from sawtooth_block_info_py.processor.config.block_info import \
     load_toml_block_info_config
-from sawtooth_block_info.processor.config.block_info import \
+from sawtooth_block_info_py.processor.config.block_info import \
     merge_block_info_config
 
 

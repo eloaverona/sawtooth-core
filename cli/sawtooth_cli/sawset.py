@@ -330,6 +330,13 @@ def _create_propose_txn(signer, setting_key_value):
     payload = SettingsPayload(data=proposal.SerializeToString(),
                               action=SettingsPayload.PROPOSE)
 
+    try:
+        with open("settings_payload", 'wb') as batch_file:
+            batch_file.write(payload.SerializeToString())
+    except IOError as e:
+        raise CliException(
+            'Unable to write to batch file: {}'.format(str(e)))
+
     return _make_txn(signer, setting_key, payload)
 
 
