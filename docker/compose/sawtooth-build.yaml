@@ -139,7 +139,7 @@ services:
   block-info-tp:
     build:
       context: ../../
-      dockerfile: ./families/block_info/Dockerfile
+      dockerfile: ./families/block_info/python/Dockerfile
     image: block-info-tp-local:${ISOLATION_ID}
     volumes:
       - ../../:/project/sawtooth-core
