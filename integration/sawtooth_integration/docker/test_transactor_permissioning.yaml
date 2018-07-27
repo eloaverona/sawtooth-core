@@ -37,7 +37,7 @@ services:
   identity-tp:
     build:
       context: ../../..
-      dockerfile: ./families/identity/python/Dockerfile
+      dockerfile: ./families/identity/Dockerfile
       args:
         - http_proxy
         - https_proxy

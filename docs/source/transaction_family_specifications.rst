@@ -14,7 +14,6 @@ your own transaction family.
 * The :doc:`/transaction_family_specifications/identity_transaction_family`
   is an extensible role- and policy-based system for defining permissions in a
   way that can be used by other Sawtooth components.
-  Identity is written in Python.
   The family name is ``sawtooth_identity``;
   the associated transaction processor is ``identity-tp`` (see
   :doc:`/cli/identity-tp`).
