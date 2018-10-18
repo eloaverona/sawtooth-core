@@ -40,9 +40,9 @@
 /families/identity/sawtooth_identity/target/
 /families/identity/sawtooth_identity/Cargo.lock
 /families/identity/sawtooth_identity/bin/
-/families/identity/sawtooth_identity/src/identities.rs
-/families/identity/sawtooth_identity/src/identity.rs
-/families/identity/sawtooth_identity/src/setting.rs
+# /families/identity/sawtooth_identity/src/identities.rs
+# /families/identity/sawtooth_identity/src/identity.rs
+# /families/identity/sawtooth_identity/src/setting.rs
 
 
 /coverage
